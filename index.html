@@ -5,7 +5,23 @@
 </body>
 <script src="renderer.js"></script>
 <script>
+    const vsSource = `
+    attribute vec4 aVertexPosition;
+    void main() {
+      gl_Position = aVertexPosition;
+    }
+  `;
+
+    const fsSource = `
+    void main() {
+      gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    }
+  `;
+
     const renderer = new Renderer("#glCanvas");
+
+    renderer.initialize_scene(vsSource, fsSource);
+
     renderer.frame();
 </script>
 
