@@ -1,13 +1,3 @@
-class Shader {
-    constructor(gl, id) {
-        this.gl = gl;
-        this.id = id;
-    }
-
-    enable() {
-        this.gl.useProgram(this.id);
-    }
-}
 function loadShader(gl, type, source) {
     const shader = gl.createShader(type);
     gl.shaderSource(shader, source);
@@ -19,25 +9,34 @@ function loadShader(gl, type, source) {
     }
     return shader;
 }
-function initShaderProgram(gl, vsSource, fsSource) {
-    const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
-    const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
-
-    // Create the shader program
-
-    const shaderProgram = gl.createProgram();
-    gl.attachShader(shaderProgram, vertexShader);
-    gl.attachShader(shaderProgram, fragmentShader);
-    gl.linkProgram(shaderProgram);
-
-    // If creating the shader program failed, alert
-
-    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-        alert('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram));
-        return null;
+class Shader {
+    constructor(gl) {
+        this.gl = gl;
+        this.id = gl.createProgram();
     }
 
-    return new Shader(gl, shaderProgram);
+    compile(vsSource, fsSource) {
+        const vertexShader = loadShader(this.gl, this.gl.VERTEX_SHADER, vsSource);
+        const fragmentShader = loadShader(this.gl, this.gl.FRAGMENT_SHADER, fsSource);
+
+        // Create the shader program
+
+        this.gl.attachShader(this.id, vertexShader);
+        this.gl.attachShader(this.id, fragmentShader);
+        this.gl.linkProgram(this.id);
+
+        // If creating the shader program failed, alert
+        if (!this.gl.getProgramParameter(this.id, this.gl.LINK_STATUS)) {
+            alert('Unable to initialize the shader program: ' + this.gl.getProgramInfoLog(this.id));
+            return false;
+        }
+
+        return true;
+    }
+
+    enable() {
+        this.gl.useProgram(this.id);
+    }
 }
 
 class VBO {
@@ -121,7 +120,8 @@ class Renderer {
     }
 
     initialize_scene(vs, fs) {
-        this.shader = initShaderProgram(this.gl, vs, fs);
+        this.shader = new Shader(this.gl);
+        this.shader.compile(vs, fs);
 
         const vbo = new VBO(this.gl);
         const positions = [
