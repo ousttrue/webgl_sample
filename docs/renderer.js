@@ -235,8 +235,8 @@ class VAO {
     }
 
     update(time_ms) {
-        const angleX = time_ms * 0.0005 * Math.PI + 1;
-        const angleZ = time_ms * 0.001 * Math.PI;
+        const angleX = time_ms * 0.0001 * Math.PI + 1;
+        const angleZ = time_ms * 0.0002 * Math.PI;
         this.matrix = Matrix4.identity()
             .rotateZ(angleZ)
             .rotateX(angleX)
