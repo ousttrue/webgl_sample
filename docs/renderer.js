@@ -1,37 +1,53 @@
-//
-// Initialize a texture and load an image.
-// When the image finished loading copy it into the texture.
-//
-function loadTexture(gl, image) {
-    const texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
+class Texture {
 
-    const level = 0;
-    const internalFormat = gl.RGBA;
-    const srcFormat = gl.RGBA;
-    const srcType = gl.UNSIGNED_BYTE;
-    gl.texImage2D(gl.TEXTURE_2D, level, internalFormat,
-        srcFormat, srcType, image);
-
-    // WebGL1 has different requirements for power of 2 images
-    // vs non power of 2 images so check if the image is a
-    // power of 2 in both dimensions.
-    if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
-        // Yes, it's a power of 2. Generate mips.
-        gl.generateMipmap(gl.TEXTURE_2D);
-    } else {
-        // No, it's not a power of 2. Turn of mips and set
-        // wrapping to clamp to edge
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    constructor(gl) {
+        this.gl = gl;
+        this.id = gl.createTexture();
     }
 
-    return texture;
-}
+    load(image) {
+        this.enable();
 
-function isPowerOf2(value) {
-    return (value & (value - 1)) == 0;
+        const level = 0;
+        const internalFormat = this.gl.RGBA;
+        const srcFormat = this.gl.RGBA;
+        const srcType = this.gl.UNSIGNED_BYTE;
+        this.gl.texImage2D(this.gl.TEXTURE_2D, level, internalFormat, srcFormat, srcType, image);
+
+        // WebGL1 has different requirements for power of 2 images
+        // vs non power of 2 images so check if the image is a
+        // power of 2 in both dimensions.
+        function isPowerOf2(value) {
+            return (value & (value - 1)) == 0;
+        }
+        if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
+            // Yes, it's a power of 2. Generate mips.
+            this.gl.generateMipmap(this.gl.TEXTURE_2D);
+        } else {
+            // No, it's not a power of 2. Turn of mips and set
+            // wrapping to clamp to edge
+            this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+            this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+            this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+        }
+    }
+
+    enable() {
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.id);
+    }
+
+    activate(unit) {
+        this.enable();
+        switch (unit) {
+            case 0: this.gl.activeTexture(this.gl.TEXTURE0); break;
+            default:
+                alert("unknown unit: " + unit);
+                break;
+        }
+
+        // Tell the shader we bound the texture to texture unit 0
+        //this.gl.uniform1i(programInfo.uniformLocations.uSampler, unit);
+    }
 }
 
 function loadShader(gl, type, source) {
@@ -374,7 +390,8 @@ class Renderer {
         }
 
         // Load texture
-        this.texture = loadTexture(this.gl, image);
+        this.texture = new Texture(this.gl);
+        this.texture.load(image);
 
         this.camera = new Camera();
         this.camera.aspect = this.gl.canvas.clientWidth / this.gl.canvas.clientHeight;
@@ -400,6 +417,9 @@ class Renderer {
         this.shader.set_mat4('uProjectionMatrix', this.camera.projection);
         this.shader.set_mat4('uViewMatrix', this.camera.view);
         this.shader.set_mat4('uModelMatrix', this.vao.matrix);
+
+        this.texture.activate(0);
+
         this.vao.draw();
     }
 
