@@ -10,11 +10,15 @@
   const renderer = new Renderer("#glCanvas");
 
   async function setup() {
-    const vsres = await fetch('basic.vs', { mode: 'no-cors' });
-    const vs = await vsres.text();
-    const fsres = await fetch('basic.fs', { mode: 'no-cors' })
-    const fs = await fsres.text();
-    renderer.initialize_scene(vs, fs);
+    const vs_res = await fetch('basic.vs', { mode: 'no-cors' });
+    const vs = await vs_res.text();
+    const fs_res = await fetch('basic.fs', { mode: 'no-cors' })
+    const fs = await fs_res.text();
+    const image_res = await fetch('face.png', { mode: 'no-cors' });
+    const image_bytes = await image_res.blob();
+    const image = await createImageBitmap(image_bytes);
+
+    renderer.initialize_scene(vs, fs, image);
     renderer.frame();
   }
 

@@ -1,3 +1,39 @@
+//
+// Initialize a texture and load an image.
+// When the image finished loading copy it into the texture.
+//
+function loadTexture(gl, image) {
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+
+    const level = 0;
+    const internalFormat = gl.RGBA;
+    const srcFormat = gl.RGBA;
+    const srcType = gl.UNSIGNED_BYTE;
+    gl.texImage2D(gl.TEXTURE_2D, level, internalFormat,
+        srcFormat, srcType, image);
+
+    // WebGL1 has different requirements for power of 2 images
+    // vs non power of 2 images so check if the image is a
+    // power of 2 in both dimensions.
+    if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
+        // Yes, it's a power of 2. Generate mips.
+        gl.generateMipmap(gl.TEXTURE_2D);
+    } else {
+        // No, it's not a power of 2. Turn of mips and set
+        // wrapping to clamp to edge
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    }
+
+    return texture;
+}
+
+function isPowerOf2(value) {
+    return (value & (value - 1)) == 0;
+}
+
 function loadShader(gl, type, source) {
     const shader = gl.createShader(type);
     gl.shaderSource(shader, source);
@@ -211,7 +247,7 @@ class Renderer {
         }
     }
 
-    initialize_scene(vs, fs) {
+    initialize_scene(vs, fs, image) {
 
         this.gl.enable(this.gl.DEPTH_TEST);
         this.gl.depthFunc(this.gl.LEQUAL);
@@ -262,8 +298,42 @@ class Renderer {
                 -1.0, 1.0, -1.0,
             ];
             const vertex_count = positions.length / 4;
-
             vbo_positions.data(positions, this.gl.FLOAT, 3);
+
+            const vbo_uv = new VBO(this.gl, this.gl.ARRAY_BUFFER);
+            const uv = [
+                // Front
+                0.0, 0.0,
+                1.0, 0.0,
+                1.0, 1.0,
+                0.0, 1.0,
+                // Back
+                0.0, 0.0,
+                1.0, 0.0,
+                1.0, 1.0,
+                0.0, 1.0,
+                // Top
+                0.0, 0.0,
+                1.0, 0.0,
+                1.0, 1.0,
+                0.0, 1.0,
+                // Bottom
+                0.0, 0.0,
+                1.0, 0.0,
+                1.0, 1.0,
+                0.0, 1.0,
+                // Right
+                0.0, 0.0,
+                1.0, 0.0,
+                1.0, 1.0,
+                0.0, 1.0,
+                // Left
+                0.0, 0.0,
+                1.0, 0.0,
+                1.0, 1.0,
+                0.0, 1.0,
+            ];
+            vbo_uv.data(uv, this.gl.FLOAT, 2);
 
             const vbo_colors = new VBO(this.gl, this.gl.ARRAY_BUFFER);
             const faceColors = [
@@ -300,8 +370,11 @@ class Renderer {
 
             this.vao.add_buffer(this.gl.TRIANGLES,
                 vbo_indices,
-                vbo_positions, vbo_colors);
+                vbo_positions, vbo_uv, vbo_colors);
         }
+
+        // Load texture
+        this.texture = loadTexture(this.gl, image);
 
         this.camera = new Camera();
         this.camera.aspect = this.gl.canvas.clientWidth / this.gl.canvas.clientHeight;
