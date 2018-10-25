@@ -1,5 +1,6 @@
 class VertexAttribute {
-    constructor(element_count, values) {
+    constructor(name, element_count, values) {
+        this.name = name;
         this.element_count = element_count;
         this.values = values;
     }
@@ -60,7 +61,7 @@ class Texture {
         switch (unit) {
             case 0: this.gl.activeTexture(this.gl.TEXTURE0); break;
             default:
-                alert("unknown unit: " + unit);
+                console.error("unknown unit: " + unit);
                 break;
         }
 
@@ -74,7 +75,8 @@ function loadShader(gl, type, source) {
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        alert('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader));
+        const info = gl.getShaderInfoLog(shader);
+        console.error('An error occurred compiling the shaders: ' + info);
         gl.deleteShader(shader);
         return null;
     }
@@ -104,7 +106,7 @@ class Shader {
 
         // If creating the shader program failed, alert
         if (!this.gl.getProgramParameter(this.id, this.gl.LINK_STATUS)) {
-            alert('Unable to initialize the shader program: ' + this.gl.getProgramInfoLog(this.id));
+            console.error('Unable to initialize the shader program: ' + this.gl.getProgramInfoLog(this.id));
             return false;
         }
 
@@ -116,6 +118,10 @@ class Shader {
 
     enable() {
         this.gl.useProgram(this.id);
+    }
+
+    get_attrib_loc(key) {
+        return this.gl.getAttribLocation(this.id, key);
     }
 
     set_mat4(key, m) {
@@ -153,7 +159,7 @@ class VBO {
 
     indices(values) {
         if (this.type != this.gl.ELEMENT_ARRAY_BUFFER) {
-            alert("not ELEMENT_ARRAY_BUFFER");
+            console.error("not ELEMENT_ARRAY_BUFFER");
         }
         this.enable();
         this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER,
@@ -164,7 +170,7 @@ class VBO {
 
     data(values, element_type, elements) {
         if (this.type != this.gl.ARRAY_BUFFER) {
-            alert("not ARRAY_BUFFER");
+            console.error("not ARRAY_BUFFER");
         }
         this.element_type = element_type;
         this.elements = elements;
@@ -187,13 +193,15 @@ class VAO {
         this.matrix = Matrix4.identity();
     }
 
-    load(mesh) {
+    load(mesh, shader) {
         this.enable();
         for (const attr of mesh.attributes) {
             const vbo = new VBO(this.gl, this.gl.ARRAY_BUFFER);
             vbo.data(attr.values, this.gl.FLOAT, attr.element_count);
-            const loc = this.buffers.length;
-            this.buffers.push(vbo);
+            const loc = shader.get_attrib_loc(attr.name);
+            if (loc < 0) {
+                console.error(`${attr.name} location is not found`);
+            }
 
             vbo.enable();
             this.gl.vertexAttribPointer(
@@ -206,6 +214,8 @@ class VAO {
             this.gl.enableVertexAttribArray(
                 loc);
             vbo.disable();
+
+            this.buffers.push(vbo);
         }
 
         this.topology = this.gl.TRIANGLES;
@@ -282,7 +292,7 @@ class Renderer {
         //this.gl = canvas.getContext("webgl2");
         this.gl = canvas.getContext("webgl");
         if (this.gl === null) {
-            alert("Unable to initialize WebGL. Your browser or machine may not support it.");
+            console.error("Unable to initialize WebGL. Your browser or machine may not support it.");
         }
     }
 
@@ -297,7 +307,7 @@ class Renderer {
 
         // mesh
         this.vao = new VAO(this.gl);
-        this.vao.load(mesh);
+        this.vao.load(mesh, this.shader);
 
         // Load texture
         this.texture = new Texture(this.gl);

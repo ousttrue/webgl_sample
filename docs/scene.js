@@ -1,7 +1,11 @@
 function create_scene() {
 
     const mesh = new Mesh();
-    mesh.add_attribute(new VertexAttribute(3, [
+
+    //
+    // positions
+    //
+    mesh.add_attribute(new VertexAttribute('aVertexPosition', 3, [
         // Front face
         -1.0, -1.0, 1.0,
         1.0, -1.0, 1.0,
@@ -38,7 +42,53 @@ function create_scene() {
         -1.0, 1.0, 1.0,
         -1.0, 1.0, -1.0,
     ]));
-    mesh.add_attribute(new VertexAttribute(2, [
+
+    //
+    // normals
+    //
+    const normals = [
+        // Front
+        0.0, 0.0, 1.0,
+        0.0, 0.0, 1.0,
+        0.0, 0.0, 1.0,
+        0.0, 0.0, 1.0,
+
+        // Back
+        0.0, 0.0, -1.0,
+        0.0, 0.0, -1.0,
+        0.0, 0.0, -1.0,
+        0.0, 0.0, -1.0,
+
+        // Top
+        0.0, 1.0, 0.0,
+        0.0, 1.0, 0.0,
+        0.0, 1.0, 0.0,
+        0.0, 1.0, 0.0,
+
+        // Bottom
+        0.0, -1.0, 0.0,
+        0.0, -1.0, 0.0,
+        0.0, -1.0, 0.0,
+        0.0, -1.0, 0.0,
+
+        // Right
+        1.0, 0.0, 0.0,
+        1.0, 0.0, 0.0,
+        1.0, 0.0, 0.0,
+        1.0, 0.0, 0.0,
+
+        // Left
+        -1.0, 0.0, 0.0,
+        -1.0, 0.0, 0.0,
+        -1.0, 0.0, 0.0,
+        -1.0, 0.0, 0.0
+    ];
+    mesh.add_attribute(new VertexAttribute('aVertexNormal', 3, normals));
+
+    //
+    // uv
+    //
+    mesh.add_attribute(new VertexAttribute('aTextureCoord', 2, [
         // Front
         0.0, 0.0,
         1.0, 0.0,
@@ -71,6 +121,9 @@ function create_scene() {
         0.0, 1.0,
     ]));
 
+    //
+    // vertex color
+    //
     const faceColors = [
         [0.0, 1.0, 1.0, 1.0],    // Front face: white
         [1.0, 0.0, 0.0, 1.0],    // Back face: red
@@ -84,8 +137,11 @@ function create_scene() {
         const c = faceColors[j];
         colors = colors.concat(c, c, c, c);
     }
-    mesh.add_attribute(new VertexAttribute(4, colors));
+    mesh.add_attribute(new VertexAttribute('aVertexColor', 4, colors));
 
+    //
+    // indices
+    //
     const indices = [
         0, 1, 2, 0, 2, 3,    // front
         4, 5, 6, 4, 6, 7,    // back
