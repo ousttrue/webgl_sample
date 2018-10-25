@@ -103,24 +103,26 @@ class VAO {
         this.ext.bindVertexArrayOES(null);
     }
 
-    add_buffer(topology, vertex_count, vbo) {
+    add_buffer(topology, vertex_count, ...vbo_list) {
         this.topology = topology;
         this.vertex_count = vertex_count;
-        const loc = this.buffers.length;
-        this.buffers.push(vbo);
 
         this.enable();
-        vbo.enable();
-        this.gl.vertexAttribPointer(
-            loc,
-            vbo.elements,
-            vbo.type,
-            vbo.normalize,
-            vbo.stride,
-            0);
-        this.gl.enableVertexAttribArray(
-            loc);
-        vbo.disable();
+        for (const vbo of vbo_list) {
+            const loc = this.buffers.length;
+            this.buffers.push(vbo);
+            vbo.enable();
+            this.gl.vertexAttribPointer(
+                loc,
+                vbo.elements,
+                vbo.type,
+                vbo.normalize,
+                vbo.stride,
+                0);
+            this.gl.enableVertexAttribArray(
+                loc);
+            vbo.disable();
+        }
         this.disable();
     }
 
@@ -173,17 +175,29 @@ class Renderer {
         this.shader = new Shader(this.gl);
         this.shader.compile(vs, fs);
 
-        const vbo = new VBO(this.gl);
-        const positions = [
-            -1.0, 1.0,
-            1.0, 1.0,
-            -1.0, -1.0,
-            1.0, -1.0,
-        ];
-        vbo.data(positions, this.gl.FLOAT, 2);
-
         this.vao = new VAO(this.gl);
-        this.vao.add_buffer(this.gl.TRIANGLE_STRIP, positions.length / 2, vbo);
+
+        {
+            const vbo_positions = new VBO(this.gl);
+            const positions = [
+                -1.0, 1.0,
+                1.0, 1.0,
+                -1.0, -1.0,
+                1.0, -1.0,
+            ];
+            vbo_positions.data(positions, this.gl.FLOAT, 2);
+
+            const vbo_colors = new VBO(this.gl);
+            const colors = [
+                1.0, 1.0, 1.0, 1.0,    // white
+                1.0, 0.0, 0.0, 1.0,    // red
+                0.0, 1.0, 0.0, 1.0,    // green
+                0.0, 0.0, 1.0, 1.0,    // blue            
+            ];
+            vbo_colors.data(colors, this.gl.FLOAT, 4);
+
+            this.vao.add_buffer(this.gl.TRIANGLE_STRIP, positions.length / 2, vbo_positions, vbo_colors);
+        }
 
         this.camera = new Camera();
         this.camera.aspect = this.gl.canvas.clientWidth / this.gl.canvas.clientHeight;
