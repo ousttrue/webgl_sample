@@ -5,10 +5,12 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch local file",
+            "name": "Launch localhost",
             "type": "chrome",
             "request": "launch",
-            "file": "${workspaceRoot}/docs/index.html"
+            "url": "http://localhost:5500/docs/index.html",
+            "webRoot": "${workspaceFolder}",
+            "sourceMaps": true
         },
     ]
 }

@@ -6,27 +6,19 @@
 <script src="matrixgl.min.js"></script>
 <script src="renderer.js"></script>
 <script>
-  const vsSource = `
-    attribute vec4 aVertexPosition;
-    uniform mat4 uModelViewMatrix;
-    uniform mat4 uProjectionMatrix;
-
-    void main() {
-      gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
-    }
-  `;
-
-  const fsSource = `
-    void main() {
-      gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
-    }
-  `;
-
   const renderer = new Renderer("#glCanvas");
 
-  renderer.initialize_scene(vsSource, fsSource);
+  async function setup() {
+    const vsres = await fetch('basic.vs', { mode: 'no-cors' });
+    const vs = await vsres.text();
+    const fsres = await fetch('basic.fs', { mode: 'no-cors' })
+    const fs = await fsres.text();
+    renderer.initialize_scene(vs, fs);
+    renderer.frame();
+  }
 
-  renderer.frame();
+  setup();
+
 </script>
 
 </html>

@@ -17,7 +17,13 @@ class Shader {
 
     compile(vsSource, fsSource) {
         const vertexShader = loadShader(this.gl, this.gl.VERTEX_SHADER, vsSource);
+        if (!vertexShader) {
+            return;
+        }
         const fragmentShader = loadShader(this.gl, this.gl.FRAGMENT_SHADER, fsSource);
+        if (!fragmentShader) {
+            return;
+        }
 
         // Create the shader program
 
