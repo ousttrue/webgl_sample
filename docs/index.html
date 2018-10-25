@@ -1,28 +1,32 @@
 <html>
 
 <body>
-    <canvas id="glCanvas" width="640" height="480"></canvas>
+  <canvas id="glCanvas" width="640" height="480"></canvas>
 </body>
+<script src="matrixgl.min.js"></script>
 <script src="renderer.js"></script>
 <script>
-    const vsSource = `
+  const vsSource = `
     attribute vec4 aVertexPosition;
+    uniform mat4 uModelViewMatrix;
+    uniform mat4 uProjectionMatrix;
+
     void main() {
-      gl_Position = aVertexPosition;
+      gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
     }
   `;
 
-    const fsSource = `
+  const fsSource = `
     void main() {
       gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
     }
   `;
 
-    const renderer = new Renderer("#glCanvas");
+  const renderer = new Renderer("#glCanvas");
 
-    renderer.initialize_scene(vsSource, fsSource);
+  renderer.initialize_scene(vsSource, fsSource);
 
-    renderer.frame();
+  renderer.frame();
 </script>
 
 </html>

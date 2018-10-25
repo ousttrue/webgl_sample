@@ -31,11 +31,27 @@ class Shader {
             return false;
         }
 
+        this.uniformLocations = {
+        }
+
         return true;
     }
 
     enable() {
         this.gl.useProgram(this.id);
+    }
+
+    set_mat4(key, m) {
+        let loc = this.uniformLocations[key];
+        if (!loc) {
+            loc = this.gl.getUniformLocation(this.id, key);
+            this.uniformLocations[key] = loc;
+        }
+        this.enable();
+        this.gl.uniformMatrix4fv(
+            loc,
+            false,
+            m.values);
     }
 }
 
@@ -81,7 +97,8 @@ class VAO {
         this.ext.bindVertexArrayOES(null);
     }
 
-    add_buffer(vertex_count, vbo) {
+    add_buffer(topology, vertex_count, vbo) {
+        this.topology = topology;
         this.vertex_count = vertex_count;
         const loc = this.buffers.length;
         this.buffers.push(vbo);
@@ -103,8 +120,35 @@ class VAO {
 
     draw() {
         this.enable();
-        this.gl.drawArrays(this.gl.TRIANGLES, 0, this.vertex_count);
+        this.gl.drawArrays(this.topology, 0, this.vertex_count);
         this.disable();
+    }
+}
+
+class Camera {
+    constructor() {
+        // projection
+        this.fieldOfView = 45 * Math.PI / 180;   // in radians
+        this.aspect = 1.0;
+        this.zNear = 0.1;
+        this.zFar = 100.0;
+
+        // position
+        this.distance = 6;
+
+        this.recalculate();
+    }
+
+    recalculate() {
+        this.projection = Matrix4.perspective({
+            fovYRadian: this.fieldOfView,
+            aspectRatio: this.aspect,
+            near: this.zNear,
+            far: this.zFar
+        });
+
+        this.view = Matrix4.identity()
+            .translate(0, 0, -this.distance);
     }
 }
 
@@ -125,14 +169,19 @@ class Renderer {
 
         const vbo = new VBO(this.gl);
         const positions = [
-            0, 0.8,
-            -0.8, -0.8,
-            0.8, -0.8
+            -1.0, 1.0,
+            1.0, 1.0,
+            -1.0, -1.0,
+            1.0, -1.0,
         ];
         vbo.data(positions, this.gl.FLOAT, 2);
 
         this.vao = new VAO(this.gl);
-        this.vao.add_buffer(3, vbo);
+        this.vao.add_buffer(this.gl.TRIANGLE_STRIP, positions.length / 2, vbo);
+
+        this.camera = new Camera();
+        this.camera.aspect = this.gl.canvas.clientWidth / this.gl.canvas.clientHeight;
+        this.camera.recalculate();
     }
 
     // animation
@@ -146,7 +195,10 @@ class Renderer {
     render() {
         this.gl.clearColor(...this.clear_color);
         this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+
         this.shader.enable();
+        this.shader.set_mat4('uProjectionMatrix', this.camera.projection);
+        this.shader.set_mat4('uModelViewMatrix', this.camera.view);
         this.vao.draw();
     }
 
