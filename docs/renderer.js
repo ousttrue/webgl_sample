@@ -1,3 +1,22 @@
+class VertexAttribute {
+    constructor(element_count, values) {
+        this.element_count = element_count;
+        this.values = values;
+    }
+}
+
+class Mesh {
+    constructor(indices) {
+        this.attributes = [];
+    }
+    add_attribute(attribute) {
+        this.attributes.push(attribute);
+    }
+    set_indices(indices) {
+        this.indices = indices;
+    }
+}
+
 class Texture {
 
     constructor(gl) {
@@ -168,24 +187,14 @@ class VAO {
         this.matrix = Matrix4.identity();
     }
 
-    enable() {
-        this.ext.bindVertexArrayOES(this.id);
-    }
-
-    disable() {
-        this.ext.bindVertexArrayOES(null);
-    }
-
-    add_buffer(topology, indices, ...vbo_list) {
-        this.topology = topology;
-        this.indices = indices;
-
+    load(mesh) {
         this.enable();
-        indices.enable();
-
-        for (const vbo of vbo_list) {
+        for (const attr of mesh.attributes) {
+            const vbo = new VBO(this.gl, this.gl.ARRAY_BUFFER);
+            vbo.data(attr.values, this.gl.FLOAT, attr.element_count);
             const loc = this.buffers.length;
             this.buffers.push(vbo);
+
             vbo.enable();
             this.gl.vertexAttribPointer(
                 loc,
@@ -198,7 +207,21 @@ class VAO {
                 loc);
             vbo.disable();
         }
+
+        this.topology = this.gl.TRIANGLES;
+        this.indices = new VBO(this.gl, this.gl.ELEMENT_ARRAY_BUFFER);
+        this.indices.indices(mesh.indices);
+        this.indices.enable();
+
         this.disable();
+    }
+
+    enable() {
+        this.ext.bindVertexArrayOES(this.id);
+    }
+
+    disable() {
+        this.ext.bindVertexArrayOES(null);
     }
 
     update(time_ms) {
@@ -263,7 +286,7 @@ class Renderer {
         }
     }
 
-    initialize_scene(vs, fs, image) {
+    initialize_scene(vs, fs, mesh, image) {
 
         this.gl.enable(this.gl.DEPTH_TEST);
         this.gl.depthFunc(this.gl.LEQUAL);
@@ -272,122 +295,9 @@ class Renderer {
         this.shader = new Shader(this.gl);
         this.shader.compile(vs, fs);
 
+        // mesh
         this.vao = new VAO(this.gl);
-
-        {
-            const vbo_positions = new VBO(this.gl, this.gl.ARRAY_BUFFER);
-            const positions = [
-                // Front face
-                -1.0, -1.0, 1.0,
-                1.0, -1.0, 1.0,
-                1.0, 1.0, 1.0,
-                -1.0, 1.0, 1.0,
-
-                // Back face
-                -1.0, -1.0, -1.0,
-                -1.0, 1.0, -1.0,
-                1.0, 1.0, -1.0,
-                1.0, -1.0, -1.0,
-
-                // Top face
-                -1.0, 1.0, -1.0,
-                -1.0, 1.0, 1.0,
-                1.0, 1.0, 1.0,
-                1.0, 1.0, -1.0,
-
-                // Bottom face
-                -1.0, -1.0, -1.0,
-                1.0, -1.0, -1.0,
-                1.0, -1.0, 1.0,
-                -1.0, -1.0, 1.0,
-
-                // Right face
-                1.0, -1.0, -1.0,
-                1.0, 1.0, -1.0,
-                1.0, 1.0, 1.0,
-                1.0, -1.0, 1.0,
-
-                // Left face
-                -1.0, -1.0, -1.0,
-                -1.0, -1.0, 1.0,
-                -1.0, 1.0, 1.0,
-                -1.0, 1.0, -1.0,
-            ];
-            const vertex_count = positions.length / 4;
-            vbo_positions.data(positions, this.gl.FLOAT, 3);
-
-            const vbo_uv = new VBO(this.gl, this.gl.ARRAY_BUFFER);
-            const uv = [
-                // Front
-                0.0, 0.0,
-                1.0, 0.0,
-                1.0, 1.0,
-                0.0, 1.0,
-                // Back
-                0.0, 0.0,
-                1.0, 0.0,
-                1.0, 1.0,
-                0.0, 1.0,
-                // Top
-                0.0, 0.0,
-                1.0, 0.0,
-                1.0, 1.0,
-                0.0, 1.0,
-                // Bottom
-                0.0, 0.0,
-                1.0, 0.0,
-                1.0, 1.0,
-                0.0, 1.0,
-                // Right
-                0.0, 0.0,
-                1.0, 0.0,
-                1.0, 1.0,
-                0.0, 1.0,
-                // Left
-                0.0, 0.0,
-                1.0, 0.0,
-                1.0, 1.0,
-                0.0, 1.0,
-            ];
-            vbo_uv.data(uv, this.gl.FLOAT, 2);
-
-            const vbo_colors = new VBO(this.gl, this.gl.ARRAY_BUFFER);
-            const faceColors = [
-                [0.0, 1.0, 1.0, 1.0],    // Front face: white
-                [1.0, 0.0, 0.0, 1.0],    // Back face: red
-                [0.0, 1.0, 0.0, 1.0],    // Top face: green
-                [0.0, 0.0, 1.0, 1.0],    // Bottom face: blue
-                [1.0, 1.0, 0.0, 1.0],    // Right face: yellow
-                [1.0, 0.0, 1.0, 1.0],    // Left face: purple
-            ];
-
-            // Convert the array of colors into a table for all the vertices.
-
-            var colors = [];
-
-            for (var j = 0; j < faceColors.length; ++j) {
-                const c = faceColors[j];
-
-                // Repeat each color four times for the four vertices of the face
-                colors = colors.concat(c, c, c, c);
-            }
-            vbo_colors.data(colors, this.gl.FLOAT, 4);
-
-            const indices = [
-                0, 1, 2, 0, 2, 3,    // front
-                4, 5, 6, 4, 6, 7,    // back
-                8, 9, 10, 8, 10, 11,   // top
-                12, 13, 14, 12, 14, 15,   // bottom
-                16, 17, 18, 16, 18, 19,   // right
-                20, 21, 22, 20, 22, 23,   // left
-            ];
-            const vbo_indices = new VBO(this.gl, this.gl.ELEMENT_ARRAY_BUFFER);
-            vbo_indices.indices(indices);
-
-            this.vao.add_buffer(this.gl.TRIANGLES,
-                vbo_indices,
-                vbo_positions, vbo_uv, vbo_colors);
-        }
+        this.vao.load(mesh);
 
         // Load texture
         this.texture = new Texture(this.gl);
