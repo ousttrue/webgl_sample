@@ -212,6 +212,11 @@ class Renderer {
     }
 
     initialize_scene(vs, fs) {
+
+        this.gl.enable(this.gl.DEPTH_TEST);
+        this.gl.depthFunc(this.gl.LEQUAL);
+        this.gl.enable(this.gl.CULL_FACE);
+
         this.shader = new Shader(this.gl);
         this.shader.compile(vs, fs);
 
@@ -262,7 +267,7 @@ class Renderer {
 
             const vbo_colors = new VBO(this.gl, this.gl.ARRAY_BUFFER);
             const faceColors = [
-                [1.0, 1.0, 1.0, 1.0],    // Front face: white
+                [0.0, 1.0, 1.0, 1.0],    // Front face: white
                 [1.0, 0.0, 0.0, 1.0],    // Back face: red
                 [0.0, 1.0, 0.0, 1.0],    // Top face: green
                 [0.0, 0.0, 1.0, 1.0],    // Bottom face: blue
@@ -293,7 +298,7 @@ class Renderer {
             const vbo_indices = new VBO(this.gl, this.gl.ELEMENT_ARRAY_BUFFER);
             vbo_indices.indices(indices);
 
-            this.vao.add_buffer(this.gl.TRIANGLE_STRIP,
+            this.vao.add_buffer(this.gl.TRIANGLES,
                 vbo_indices,
                 vbo_positions, vbo_colors);
         }
@@ -315,7 +320,8 @@ class Renderer {
     // draw
     render() {
         this.gl.clearColor(...this.clear_color);
-        this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+        this.gl.clearDepth(1);
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
 
         this.shader.enable();
         this.shader.set_mat4('uProjectionMatrix', this.camera.projection);
