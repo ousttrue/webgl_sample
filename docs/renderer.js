@@ -62,21 +62,40 @@ class Shader {
 }
 
 class VBO {
-    constructor(gl) {
+    //
+    // type: gl.ARRAY_BUFFER
+    // type: gl.ELEMENT_ARRAY_BUFFER
+    //
+    constructor(gl, type) {
         this.gl = gl;
         this.id = gl.createBuffer();
+        this.type = type;
     }
 
     enable() {
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.id);
+        this.gl.bindBuffer(this.type, this.id);
     }
 
     disable() {
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null);
+        this.gl.bindBuffer(this.type, null);
     }
 
-    data(values, type, elements) {
-        this.type = type;
+    indices(values) {
+        if (this.type != this.gl.ELEMENT_ARRAY_BUFFER) {
+            alert("not ELEMENT_ARRAY_BUFFER");
+        }
+        this.enable();
+        this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER,
+            new Uint16Array(values),
+            this.gl.STATIC_DRAW);
+        this.vertex_count = values.length;
+    }
+
+    data(values, element_type, elements) {
+        if (this.type != this.gl.ARRAY_BUFFER) {
+            alert("not ARRAY_BUFFER");
+        }
+        this.element_type = element_type;
         this.elements = elements;
         this.normalize = false;  // don't normalize
         this.stride = 0;         // how many bytes to get from one set of values to the next
@@ -84,6 +103,7 @@ class VBO {
         this.gl.bufferData(this.gl.ARRAY_BUFFER,
             new Float32Array(values),
             this.gl.STATIC_DRAW);
+        this.vertex_count = values.length / elements;
     }
 }
 
@@ -93,6 +113,7 @@ class VAO {
         this.ext = gl.getExtension("OES_vertex_array_object");
         this.id = this.ext.createVertexArrayOES();
         this.buffers = [];
+        this.matrix = Matrix4.identity();
     }
 
     enable() {
@@ -103,11 +124,13 @@ class VAO {
         this.ext.bindVertexArrayOES(null);
     }
 
-    add_buffer(topology, vertex_count, ...vbo_list) {
+    add_buffer(topology, indices, ...vbo_list) {
         this.topology = topology;
-        this.vertex_count = vertex_count;
+        this.indices = indices;
 
         this.enable();
+        indices.enable();
+
         for (const vbo of vbo_list) {
             const loc = this.buffers.length;
             this.buffers.push(vbo);
@@ -115,7 +138,7 @@ class VAO {
             this.gl.vertexAttribPointer(
                 loc,
                 vbo.elements,
-                vbo.type,
+                vbo.element_type,
                 vbo.normalize,
                 vbo.stride,
                 0);
@@ -126,9 +149,26 @@ class VAO {
         this.disable();
     }
 
+    update(time_ms) {
+        const angleX = time_ms * 0.0005 * Math.PI + 1;
+        const angleZ = time_ms * 0.001 * Math.PI;
+        this.matrix = Matrix4.identity()
+            .rotateZ(angleZ)
+            .rotateX(angleX)
+            ;
+    }
+
     draw() {
         this.enable();
-        this.gl.drawArrays(this.topology, 0, this.vertex_count);
+        if (this.indices) {
+            this.gl.drawElements(this.topology,
+                this.indices.vertex_count,
+                this.gl.UNSIGNED_SHORT,
+                0);
+        }
+        else {
+            this.gl.drawArrays(this.topology, 0, this.vertex_count);
+        }
         this.disable();
     }
 }
@@ -178,25 +218,84 @@ class Renderer {
         this.vao = new VAO(this.gl);
 
         {
-            const vbo_positions = new VBO(this.gl);
+            const vbo_positions = new VBO(this.gl, this.gl.ARRAY_BUFFER);
             const positions = [
-                -1.0, 1.0,
-                1.0, 1.0,
-                -1.0, -1.0,
-                1.0, -1.0,
-            ];
-            vbo_positions.data(positions, this.gl.FLOAT, 2);
+                // Front face
+                -1.0, -1.0, 1.0,
+                1.0, -1.0, 1.0,
+                1.0, 1.0, 1.0,
+                -1.0, 1.0, 1.0,
 
-            const vbo_colors = new VBO(this.gl);
-            const colors = [
-                1.0, 1.0, 1.0, 1.0,    // white
-                1.0, 0.0, 0.0, 1.0,    // red
-                0.0, 1.0, 0.0, 1.0,    // green
-                0.0, 0.0, 1.0, 1.0,    // blue            
+                // Back face
+                -1.0, -1.0, -1.0,
+                -1.0, 1.0, -1.0,
+                1.0, 1.0, -1.0,
+                1.0, -1.0, -1.0,
+
+                // Top face
+                -1.0, 1.0, -1.0,
+                -1.0, 1.0, 1.0,
+                1.0, 1.0, 1.0,
+                1.0, 1.0, -1.0,
+
+                // Bottom face
+                -1.0, -1.0, -1.0,
+                1.0, -1.0, -1.0,
+                1.0, -1.0, 1.0,
+                -1.0, -1.0, 1.0,
+
+                // Right face
+                1.0, -1.0, -1.0,
+                1.0, 1.0, -1.0,
+                1.0, 1.0, 1.0,
+                1.0, -1.0, 1.0,
+
+                // Left face
+                -1.0, -1.0, -1.0,
+                -1.0, -1.0, 1.0,
+                -1.0, 1.0, 1.0,
+                -1.0, 1.0, -1.0,
             ];
+            const vertex_count = positions.length / 4;
+
+            vbo_positions.data(positions, this.gl.FLOAT, 3);
+
+            const vbo_colors = new VBO(this.gl, this.gl.ARRAY_BUFFER);
+            const faceColors = [
+                [1.0, 1.0, 1.0, 1.0],    // Front face: white
+                [1.0, 0.0, 0.0, 1.0],    // Back face: red
+                [0.0, 1.0, 0.0, 1.0],    // Top face: green
+                [0.0, 0.0, 1.0, 1.0],    // Bottom face: blue
+                [1.0, 1.0, 0.0, 1.0],    // Right face: yellow
+                [1.0, 0.0, 1.0, 1.0],    // Left face: purple
+            ];
+
+            // Convert the array of colors into a table for all the vertices.
+
+            var colors = [];
+
+            for (var j = 0; j < faceColors.length; ++j) {
+                const c = faceColors[j];
+
+                // Repeat each color four times for the four vertices of the face
+                colors = colors.concat(c, c, c, c);
+            }
             vbo_colors.data(colors, this.gl.FLOAT, 4);
 
-            this.vao.add_buffer(this.gl.TRIANGLE_STRIP, positions.length / 2, vbo_positions, vbo_colors);
+            const indices = [
+                0, 1, 2, 0, 2, 3,    // front
+                4, 5, 6, 4, 6, 7,    // back
+                8, 9, 10, 8, 10, 11,   // top
+                12, 13, 14, 12, 14, 15,   // bottom
+                16, 17, 18, 16, 18, 19,   // right
+                20, 21, 22, 20, 22, 23,   // left
+            ];
+            const vbo_indices = new VBO(this.gl, this.gl.ELEMENT_ARRAY_BUFFER);
+            vbo_indices.indices(indices);
+
+            this.vao.add_buffer(this.gl.TRIANGLE_STRIP,
+                vbo_indices,
+                vbo_positions, vbo_colors);
         }
 
         this.camera = new Camera();
@@ -209,6 +308,8 @@ class Renderer {
         const angle = time_ms * 0.001 * Math.PI;
         this.bg = Math.sin(angle) + 1;
         this.clear_color = [this.bg, this.bg, this.bg, 1];
+
+        this.vao.update(time_ms);
     }
 
     // draw
@@ -218,7 +319,8 @@ class Renderer {
 
         this.shader.enable();
         this.shader.set_mat4('uProjectionMatrix', this.camera.projection);
-        this.shader.set_mat4('uModelViewMatrix', this.camera.view);
+        this.shader.set_mat4('uViewMatrix', this.camera.view);
+        this.shader.set_mat4('uModelMatrix', this.vao.matrix);
         this.vao.draw();
     }
 
